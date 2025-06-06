@@ -30,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.projecttracker.ui.screens.pomodoro.PomodoroScreen
 import com.example.projecttracker.ui.theme.ProjectTrackerTheme
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -59,7 +60,7 @@ fun MainScreen() {
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             NavHost(navController, startDestination = Screen.Dashboard.route) {
                 composable(Screen.Dashboard.route) { DashboardScreen() }
-                composable(Screen.Pomodoro.route) { PlaceholderScreen("Pomodoro") }
+                composable(Screen.Pomodoro.route) { PomodoroScreen() }
                 composable(Screen.Notes.route) { PlaceholderScreen("Notes") }
             }
         }
