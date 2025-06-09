@@ -31,6 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.projecttracker.ui.screens.pomodoro.PomodoroScreen
+import com.example.projecttracker.ui.screens.dashboard.DashboardScreen
 import com.example.projecttracker.ui.theme.ProjectTrackerTheme
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
