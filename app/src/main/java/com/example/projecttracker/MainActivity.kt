@@ -3,66 +3,101 @@ package com.example.projecttracker
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import com.example.projecttracker.ui.screens.pomodoro.PomodoroScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.*
+import androidx.navigation.navArgument
+import com.example.projecttracker.data.db.AppDatabase
+import com.example.projecttracker.data.repository.ProjectRepository
+import com.example.projecttracker.ui.navigation.BottomNavigationBar
+import com.example.projecttracker.ui.screens.dashboard.CreateProjectScreen
 import com.example.projecttracker.ui.screens.dashboard.DashboardScreen
+import com.example.projecttracker.ui.screens.dashboard.ProjectDetailScreen
+import com.example.projecttracker.ui.screens.pomodoro.PomodoroScreen
 import com.example.projecttracker.ui.theme.ProjectTrackerTheme
+import com.example.projecttracker.viewmodel.AppViewModel
+import com.example.projecttracker.viewmodel.AppViewModelFactory
 
-sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Dashboard : Screen("dashboard", "Dashboard", Icons.Filled.Home)
-    object Pomodoro : Screen("pomodoro", "Pomodoro", Icons.Filled.Star)
-    object Notes : Screen("notes", "Notes", Icons.Filled.DateRange)
+sealed class Screen(val route: String) {
+    data object Dashboard : Screen("dashboard")
+    data object Pomodoro : Screen("pomodoro")
+    data object Notes : Screen("notes")
+    data object CreateProject : Screen("createProject")
+    data object ProjectDetail : Screen("projectDetail/{projectId}")
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⚙️ Manual DB and ViewModel setup
+        val database = AppDatabase.getDatabase(applicationContext)
+        val repository = ProjectRepository(database.projectDao(), database.taskDao())
+        val viewModelFactory = AppViewModelFactory(repository)
+
         setContent {
             ProjectTrackerTheme {
-                MainScreen()
+                MainScreen(viewModelFactory)
             }
         }
     }
 }
 
+
 @Composable
-fun MainScreen() {
+fun MainScreen(factory: AppViewModelFactory) {
+    val viewModel: AppViewModel = viewModel(factory = factory)
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val bottomBarRoutes = listOf(
+        Screen.Dashboard.route,
+        Screen.Pomodoro.route,
+        Screen.Notes.route
+    )
+
     Scaffold(
         topBar = { TopBar() },
-        bottomBar = { BottomNavigationBar(navController) }
+        bottomBar = {
+            if (currentRoute in bottomBarRoutes) {
+                BottomNavigationBar(navController)
+            }
+        }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            NavHost(navController, startDestination = Screen.Dashboard.route) {
-                composable(Screen.Dashboard.route) { DashboardScreen() }
-                composable(Screen.Pomodoro.route) { PomodoroScreen() }
-                composable(Screen.Notes.route) { PlaceholderScreen("Notes") }
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)) {
+
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Dashboard.route
+            ) {
+                composable(Screen.Dashboard.route) {
+                    DashboardScreen(navController, viewModel)
+                }
+                composable(Screen.Pomodoro.route) {
+                    PomodoroScreen()
+                }
+                composable(Screen.Notes.route) {
+                    PlaceholderScreen("Notes")
+                }
+                composable(Screen.CreateProject.route) {
+                    CreateProjectScreen(navController, viewModel)
+                }
+                composable(
+                    route = Screen.ProjectDetail.route,
+                    arguments = listOf(navArgument("projectId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val projectId = backStackEntry.arguments?.getInt("projectId")
+                    projectId?.let {
+                        ProjectDetailScreen(projectId = it, navController = navController, viewModel = viewModel)
+                    } ?: PlaceholderScreen("Invalid Project ID")
+                }
             }
         }
     }
@@ -81,41 +116,6 @@ fun TopBar() {
 }
 
 @Composable
-fun BottomNavigationBar(navController: NavHostController) {
-    val screens = listOf(Screen.Dashboard, Screen.Pomodoro, Screen.Notes)
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+fun PlaceholderScreen(s: String) {
 
-    NavigationBar {
-        screens.forEach { screen ->
-            NavigationBarItem(
-                icon = { Icon(screen.icon, contentDescription = screen.label) },
-                label = { Text(screen.label) },
-                selected = currentRoute == screen.route,
-                onClick = {
-                    navController.navigate(screen.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun DashboardScreen() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Text("Dashboard coming soon...", style = MaterialTheme.typography.headlineSmall)
-    }
-}
-
-@Composable
-fun PlaceholderScreen(name: String) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Text("$name section coming soon...", style = MaterialTheme.typography.headlineSmall)
-    }
 }

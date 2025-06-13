@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.projecttracker.data.model.Project
-import com.example.projecttracker.data.model.example
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,15 +32,11 @@ fun ProjectCard(project: Project, onClick: () -> Unit , modifier : Modifier) {
 
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
-                progress = if (project.isCompleted) 1f else 0.3f, // Temporary static
-                modifier = Modifier.fillMaxWidth()
+                progress = {
+                    if (project.isCompleted) 1f else 0.3f // Temporary static
+                },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun Preview1(){
-    ProjectCard(example, onClick = {} ,modifier = Modifier)
 }
