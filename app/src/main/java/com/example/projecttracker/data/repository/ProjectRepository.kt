@@ -44,4 +44,12 @@ class ProjectRepository(
     suspend fun deleteTask(taskId: Int) {
         taskDao.deleteTask(Task(id = taskId, projectId = 0, description = "")) // Minimal Task object for deletion
     }
+
+    suspend fun countTaskCompleted(taskId: Int): Int{
+        return taskDao.countTaskCompleted(taskId)
+    }
+
+    suspend fun countTaskRemaining(taskId: Int): Int{
+        return taskDao.countTaskRemaining(taskId)
+    }
 }

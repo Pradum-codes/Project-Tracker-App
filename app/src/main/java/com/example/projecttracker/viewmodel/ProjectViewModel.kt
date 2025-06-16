@@ -1,7 +1,6 @@
 package com.example.projecttracker.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.projecttracker.data.model.Project
 import com.example.projecttracker.data.model.Task
@@ -24,6 +23,9 @@ class AppViewModel(
     private val _tasks = MutableStateFlow<List<Task>>(emptyList())
     val tasks: StateFlow<List<Task>> = _tasks.asStateFlow()
 
+    private val _projectProgressMap = MutableStateFlow<Map<Int, Float>>(emptyMap())
+    val projectProgressMap: StateFlow<Map<Int, Float>> = _projectProgressMap.asStateFlow()
+
     init {
         viewModelScope.launch {
             repository.getAllProjects().collect { projects ->
@@ -36,9 +38,6 @@ class AppViewModel(
         viewModelScope.launch {
             repository.getProjectById(projectId).collect { project ->
                 _selectedProject.value = project
-            }
-            repository.getTasksForProject(projectId).collect { tasks ->
-                _tasks.value = tasks
             }
         }
     }
@@ -75,6 +74,14 @@ class AppViewModel(
         }
     }
 
+    fun loadTask(projectId: Int) {
+        viewModelScope.launch {
+            repository.getTasksForProject(projectId).collect { tasks ->
+                _tasks.value = tasks
+            }
+        }
+    }
+
     fun toggleTaskCompletion(task: Task) {
         viewModelScope.launch {
             repository.updateTask(task.copy(isDone = !task.isDone))
@@ -84,5 +91,19 @@ class AppViewModel(
     fun clearSelectedProject() {
         _selectedProject.value = null
         _tasks.value = emptyList()
+    }
+
+
+    fun updateProjectProgress(projectId: Int) {
+        viewModelScope.launch {
+            val completed = repository.countTaskCompleted(projectId)
+            val total = repository.countTaskRemaining(projectId) + completed
+
+            val progress = if (total > 0) {
+                (completed.toFloat() / total.toFloat()) * 100f
+            } else 0f
+
+            _projectProgressMap.value = _projectProgressMap.value + (projectId to progress)
+        }
     }
 }

@@ -27,4 +27,11 @@ interface TaskDao {
 
     @Query("DELETE FROM Task WHERE projectId = :projectId")
     suspend fun deleteTasksForProject(projectId: Int)
+
+    @Query("SELECT COUNT(*) FROM Task WHERE projectId = :projectId AND isDone == 1")
+    suspend fun countTaskCompleted(projectId: Int): Int
+
+    @Query("SELECT COUNT(*) FROM Task WHERE projectId = :projectId AND isDone == 0")
+    suspend fun countTaskRemaining(projectId: Int): Int
+
 }

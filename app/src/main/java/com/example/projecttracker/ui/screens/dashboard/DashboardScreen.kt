@@ -41,6 +41,7 @@ fun DashboardScreen(
                         onClick = {
                             navController.navigate("projectDetail/${project.id}")
                         },
+                        viewModel = viewModel,
                         modifier = Modifier
                     )
                 }
