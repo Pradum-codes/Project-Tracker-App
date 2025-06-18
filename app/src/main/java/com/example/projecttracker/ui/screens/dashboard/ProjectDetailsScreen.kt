@@ -1,5 +1,8 @@
 package com.example.projecttracker.ui.screens.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.projecttracker.data.model.Task
 import com.example.projecttracker.viewmodel.AppViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,12 +31,24 @@ fun ProjectDetailScreen(
 ) {
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
-        viewModel.loadTask(projectId)
     }
-    val project by viewModel.selectedProject.collectAsState()
-    val tasks by viewModel.tasks.collectAsState()
+
+    val state by viewModel.projectDetailState.collectAsState()
+    val project = state.project
+    val tasks = state.tasks
+    var isLoading by remember { mutableStateOf(state.isLoading) }
     var newTaskDescription by rememberSaveable { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf<Task?>(null) }
+
+    // Enforce minimum loading duration
+    LaunchedEffect(state.isLoading) {
+        if (state.isLoading) {
+            isLoading = true
+        } else {
+            delay(300L) // Minimum loading time of 300ms
+            isLoading = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -40,7 +56,6 @@ fun ProjectDetailScreen(
                 title = { Text(project?.title ?: "Project Details", style = MaterialTheme.typography.headlineMedium) },
                 navigationIcon = {
                     IconButton(onClick = {
-                        viewModel.clearSelectedProject()
                         navController.popBackStack()
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -106,7 +121,8 @@ fun ProjectDetailScreen(
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 8.dp),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isLoading
                 )
                 Button(
                     onClick = {
@@ -120,7 +136,7 @@ fun ProjectDetailScreen(
                             newTaskDescription = ""
                         }
                     },
-                    enabled = newTaskDescription.isNotBlank()
+                    enabled = newTaskDescription.isNotBlank() && !isLoading
                 ) {
                     Text("Add")
                 }
@@ -134,24 +150,43 @@ fun ProjectDetailScreen(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
-            if (tasks.isEmpty()) {
-                Text(
-                    text = "No tasks available. Add a task to get started!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            } else {
-                LazyColumn {
-                    items(tasks, key = { it.id }) { task ->
-                        TaskItem(
-                            task = task,
-                            onToggleCompletion = { viewModel.toggleTaskCompletion(task) },
-                            onDelete = { showDeleteDialog = task }
-                        )
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                tasks.isEmpty() -> {
+                    Text(
+                        text = "No tasks available. Add a task to get started!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+                else -> {
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        LazyColumn {
+                            items(tasks, key = { it.id }) { task ->
+                                TaskItem(
+                                    task = task,
+                                    onToggleCompletion = { viewModel.toggleTaskCompletion(task) },
+                                    onDelete = { showDeleteDialog = task }
+                                )
+                            }
+                        }
                     }
                 }
             }

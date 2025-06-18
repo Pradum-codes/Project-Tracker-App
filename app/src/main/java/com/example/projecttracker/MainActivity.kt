@@ -3,11 +3,21 @@ package com.example.projecttracker
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.EaseIn
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -31,26 +41,27 @@ sealed class Screen(val route: String) {
 }
 
 class MainActivity : ComponentActivity() {
+    private lateinit var viewModel: AppViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ⚙️ Manual DB and ViewModel setup
         val database = AppDatabase.getDatabase(applicationContext)
         val repository = ProjectRepository(database.projectDao(), database.taskDao())
         val viewModelFactory = AppViewModelFactory(repository)
 
+        viewModel = ViewModelProvider(this, viewModelFactory)[AppViewModel::class.java]
+
         setContent {
             ProjectTrackerTheme {
-                MainScreen(viewModelFactory)
+                MainScreen(viewModel)
             }
         }
     }
 }
 
-
 @Composable
-fun MainScreen(factory: AppViewModelFactory) {
-    val viewModel: AppViewModel = viewModel(factory = factory)
+fun MainScreen(viewModel: AppViewModel) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -75,7 +86,9 @@ fun MainScreen(factory: AppViewModelFactory) {
 
             NavHost(
                 navController = navController,
-                startDestination = Screen.Dashboard.route
+                startDestination = Screen.Dashboard.route,
+                enterTransition = { fadeIn(animationSpec = tween(600)) },
+                exitTransition = { fadeOut(animationSpec = tween(600)) },
             ) {
                 composable(Screen.Dashboard.route) {
                     DashboardScreen(navController, viewModel)
@@ -84,17 +97,23 @@ fun MainScreen(factory: AppViewModelFactory) {
                     PomodoroScreen()
                 }
                 composable(Screen.Notes.route) {
-                    PlaceholderScreen("Notes")
+                    PlaceholderScreen("Notes Coming Soon")
                 }
                 composable(Screen.CreateProject.route) {
                     CreateProjectScreen(navController, viewModel)
                 }
                 composable(
                     route = Screen.ProjectDetail.route,
-                    arguments = listOf(navArgument("projectId") { type = NavType.IntType })
+                    arguments = listOf(navArgument("projectId") { type = NavType.IntType }),
+                    enterTransition = { fadeIn( animationSpec = tween(600)) },
+                    exitTransition = { fadeOut( animationSpec = tween(600)) }
                 ) { backStackEntry ->
                     val projectId = backStackEntry.arguments?.getInt("projectId")
                     projectId?.let {
+//                        LaunchedEffect(projectId) {
+//                            viewModel.loadProject(projectId)
+//                            viewModel.loadTask(projectId)
+//                        }
                         ProjectDetailScreen(projectId = it, navController = navController, viewModel = viewModel)
                     } ?: PlaceholderScreen("Invalid Project ID")
                 }
@@ -116,6 +135,8 @@ fun TopBar() {
 }
 
 @Composable
-fun PlaceholderScreen(s: String) {
-
+fun PlaceholderScreen(message: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(message, style = MaterialTheme.typography.bodyLarge)
+    }
 }

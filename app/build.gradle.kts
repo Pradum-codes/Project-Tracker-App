@@ -65,4 +65,6 @@ dependencies {
 
     implementation(libs.androidx.room.runtime.v271)
     ksp(libs.androidx.room.compiler.v271)
+
+    implementation(libs.accompanist.navigation.animation)
 }
