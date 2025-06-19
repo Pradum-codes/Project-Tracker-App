@@ -1,5 +1,6 @@
 package com.example.projecttracker.ui.screens.dashboard
 
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,10 +35,10 @@ fun DashboardScreen(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(projects) { project ->
+            LazyColumn(modifier = Modifier.weight(1f), flingBehavior = ScrollableDefaults.flingBehavior() ) {
+                items(items = projects, key = {it.id}) { project ->
                     ProjectCard(
-                        project = project,
+                        projectId = project.id,
                         onClick = {
                             navController.navigate("projectDetail/${project.id}")
                         },

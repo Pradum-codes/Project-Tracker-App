@@ -2,6 +2,7 @@
 accompanistNavigationAnimation = "0.34.0"
 agp = "8.10.1"
 animation = "1.8.2"
+coreSplashscreen = "1.0.1"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -20,6 +21,7 @@ adsMobileSdk = "0.16.0-alpha01"
 accompanist-navigation-animation = { module = "com.google.accompanist:accompanist-navigation-animation", version.ref = "accompanistNavigationAnimation" }
 androidx-animation = { module = "androidx.compose.animation:animation", version.ref = "animation" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-room-compiler-v271 = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 androidx-room-runtime-v271 = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

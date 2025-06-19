@@ -1,5 +1,6 @@
 package com.example.projecttracker.ui.screens.dashboard
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -237,7 +238,7 @@ fun TaskItem(
         ) {
             Checkbox(
                 checked = task.isDone,
-                onCheckedChange = { onToggleCompletion() },
+                onCheckedChange = { onToggleCompletion();Log.d("TaskItem", "Toggling task ${task.id} from ${task.isDone} to ${!task.isDone}") },
                 colors = CheckboxDefaults.colors(
                     checkedColor = MaterialTheme.colorScheme.primary,
                     uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant

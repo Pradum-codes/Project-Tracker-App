@@ -34,4 +34,9 @@ interface TaskDao {
     @Query("SELECT COUNT(*) FROM Task WHERE projectId = :projectId AND isDone == 0")
     suspend fun countTaskRemaining(projectId: Int): Int
 
+    @Query("SELECT * FROM Task")
+    fun getAllTasks(): Flow<List<Task>>
+
+    @Query("DELETE FROM Task WHERE id = :taskId")
+    suspend fun deleteTaskById(taskId: Int)
 }
