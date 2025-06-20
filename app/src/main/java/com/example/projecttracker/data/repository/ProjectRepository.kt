@@ -29,6 +29,8 @@ class ProjectRepository(
     }
 
     // Task operations
+    fun getAllTasks(): Flow<List<Task>> = taskDao.getAllTasks()
+
     fun getTasksForProject(projectId: Int): Flow<List<Task>> = taskDao.getTasksForProject(projectId)
 
     fun getTaskById(taskId: Int): Flow<Task?> = taskDao.getTaskById(taskId)
@@ -42,14 +44,14 @@ class ProjectRepository(
     }
 
     suspend fun deleteTask(taskId: Int) {
-        taskDao.deleteTask(Task(id = taskId, projectId = 0, description = "")) // Minimal Task object for deletion
+        taskDao.deleteTaskById(taskId)
     }
 
-    suspend fun countTaskCompleted(taskId: Int): Int{
-        return taskDao.countTaskCompleted(taskId)
+    suspend fun countTaskCompleted(projectId: Int): Int {
+        return taskDao.countTaskCompleted(projectId)
     }
 
-    suspend fun countTaskRemaining(taskId: Int): Int{
-        return taskDao.countTaskRemaining(taskId)
+    suspend fun countTaskRemaining(projectId: Int): Int {
+        return taskDao.countTaskRemaining(projectId)
     }
 }

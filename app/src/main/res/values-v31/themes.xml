@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 🚀 Splash-enabled Main Theme -->
+    <style name="Theme.ProjectTracker" parent="Theme.ProjectTracker.App">
+        <!-- Splash screen background color -->
+        <item name="android:windowSplashScreenBackground">@color/black</item>
+
+        <!-- Splash screen animated icon -->
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+
+        <!-- Icon background color (optional) -->
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/white</item>
+        <item name="android:windowSplashScreenAnimationDuration">1500</item>
+        <!-- Theme to apply after splash ends -->
+        <item name="postSplashScreenTheme">@style/Theme.ProjectTracker.App</item>
+    </style>
+
+    <!-- 🎨 App's Actual Theme -->
+    <style name="Theme.ProjectTracker.App" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Define your own typography, colors, shapes here if needed -->
+    </style>
+
+</resources>

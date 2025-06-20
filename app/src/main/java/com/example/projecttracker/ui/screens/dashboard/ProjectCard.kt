@@ -1,56 +1,66 @@
 package com.example.projecttracker.ui.screens.dashboard
 
-import androidx.compose.foundation.clickable
+import android.util.Log
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.projecttracker.data.model.Project
 import com.example.projecttracker.viewmodel.AppViewModel
-import java.text.SimpleDateFormat
-import java.util.*
-import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
 @Composable
 fun ProjectCard(
-    project: Project,
+    projectId: Int,
     onClick: () -> Unit,
     viewModel: AppViewModel,
-    modifier: Modifier) {
+    modifier: Modifier = Modifier
+) {
+    val cardStates by viewModel.projectCardStates.collectAsState()
+    val cardState = cardStates[projectId] ?: return // Exit if state not available
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(project.id) {
-        viewModel.updateProjectProgress(project.id)
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Project") },
+            text = { Text("Are you sure you want to delete the project \"${cardState.title}\"?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteProject(projectId)
+                    showDeleteDialog = false
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
-    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-    val endDateStr = dateFormat.format(Date(project.endDate))
-
-    // Calculate time left until deadline
-    val currentTime = System.currentTimeMillis()
-    val timeDiffMillis = project.endDate - currentTime
-    val daysLeft = abs(TimeUnit.MILLISECONDS.toDays(timeDiffMillis))
-    val timeLeftText = when {
-        timeDiffMillis < 0 -> "$daysLeft days past due"
-        daysLeft == 0L -> "Due today"
-        else -> "$daysLeft days left"
-    }
-
-    val progressMap by viewModel.projectProgressMap.collectAsState()
-    val projectProgress = progressMap[project.id] ?: 0f
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showDeleteDialog = true }
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Column(
             modifier = Modifier
@@ -69,19 +79,19 @@ fun ProjectCard(
                         .padding(end = 8.dp)
                 ) {
                     Text(
-                        text = project.title,
+                        text = cardState.title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Tech Stack: ${project.techStack}",
+                        text = "Tech Stack: ${cardState.techStack}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "Deadline: $endDateStr",
+                        text = "Deadline: ${cardState.endDateStr}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -95,29 +105,28 @@ fun ProjectCard(
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        text = timeLeftText,
+                        text = cardState.timeLeftText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (timeDiffMillis < 0) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.primary
+                        color = cardState.timeLeftColor
                     )
                     Text(
-                        text = projectProgress.toString(),
+                        text = "${cardState.progress.toInt()}%",
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
             }
 
-            // Progress Indicator (below both columns)
+            // Progress Indicator
             Spacer(Modifier.height(16.dp))
             LinearProgressIndicator(
-                progress = { if (project.isCompleted) 1f else projectProgress / 100f },
+                progress = { if (cardState.isCompleted) 1f else cardState.progress / 100f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            ) { Log.d("Indicator", "Indicator for project ${cardState.projectId}") }
         }
     }
 }

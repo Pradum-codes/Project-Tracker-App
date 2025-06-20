@@ -67,4 +67,6 @@ dependencies {
     ksp(libs.androidx.room.compiler.v271)
 
     implementation(libs.accompanist.navigation.animation)
+    implementation(libs.androidx.core.splashscreen)
+    implementation("androidx.compose.material3:material3:1.3.2")
 }

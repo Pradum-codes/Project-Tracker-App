@@ -1,22 +1,34 @@
 package com.example.projecttracker.viewmodel
 
+import android.util.Log
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.projecttracker.data.model.Project
 import com.example.projecttracker.data.model.Task
 import com.example.projecttracker.data.repository.ProjectRepository
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 data class ProjectDetailState(
     val project: Project? = null,
     val tasks: List<Task> = emptyList(),
     val isLoading: Boolean = false
+)
+
+data class ProjectCardState(
+    val projectId: Int,
+    val title: String,
+    val techStack: String,
+    val endDateStr: String,
+    val timeLeftText: String,
+    val timeLeftColor: Color,
+    val progress: Float,
+    val isCompleted: Boolean
 )
 
 class AppViewModel(
@@ -26,68 +38,91 @@ class AppViewModel(
     private val _projects = MutableStateFlow<List<Project>>(emptyList())
     val projects: StateFlow<List<Project>> = _projects.asStateFlow()
 
-    // Cache for project details
-    private val _projectDetailsCache = MutableStateFlow<Map<Int, ProjectDetailState>>(emptyMap())
     private val _projectDetailState = MutableStateFlow(ProjectDetailState())
     val projectDetailState: StateFlow<ProjectDetailState> = _projectDetailState.asStateFlow()
 
-    private val _projectProgressMap = MutableStateFlow<Map<Int, Float>>(emptyMap())
-    val projectProgressMap: StateFlow<Map<Int, Float>> = _projectProgressMap.asStateFlow()
+    private val _projectDetailsCache = MutableStateFlow<Map<Int, ProjectDetailState>>(emptyMap())
 
-    private var currentProjectJob: Job? = null
-    private var currentTaskJob: Job? = null
+    private val _projectCardStates = MutableStateFlow<Map<Int, ProjectCardState>>(emptyMap())
+    val projectCardStates: StateFlow<Map<Int, ProjectCardState>> = _projectCardStates.asStateFlow()
 
     init {
+        observeProjectsAndTasks()
+    }
+
+    private fun observeProjectsAndTasks() {
         viewModelScope.launch {
-            repository.getAllProjects().collect { projects ->
-                _projects.value = projects
+            combine(
+                repository.getAllProjects(),
+                repository.getAllTasks()
+            ) { projects, tasks ->
+                _projects.value = projects // Update the public project list
+
+                val groupedTasks = tasks.groupBy { it.projectId }
+                val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                val currentTime = System.currentTimeMillis()
+
+                projects.associate { project ->
+                    val projectTasks = groupedTasks[project.id] ?: emptyList()
+                    val completed = projectTasks.count { it.isDone }
+                    val total = projectTasks.size
+                    val progress = if (total > 0) (completed.toFloat() / total) * 100f else 0f
+
+                    val endDateStr = dateFormat.format(Date(project.endDate))
+                    val timeDiffMillis = project.endDate - currentTime
+                    val daysLeft = abs(TimeUnit.MILLISECONDS.toDays(timeDiffMillis))
+                    val timeLeftText = when {
+                        timeDiffMillis < 0 -> "$daysLeft days past due"
+                        daysLeft == 0L -> "Due today"
+                        else -> "$daysLeft days left"
+                    }
+                    val timeLeftColor = if (timeDiffMillis < 0) {
+                        Color(0xFFE57373)
+                    } else {
+                        Color(0xFF1976D2)
+                    }
+
+                    project.id to ProjectCardState(
+                        projectId = project.id,
+                        title = project.title,
+                        techStack = project.techStack,
+                        endDateStr = endDateStr,
+                        timeLeftText = timeLeftText,
+                        timeLeftColor = timeLeftColor,
+                        progress = progress,
+                        isCompleted = project.isCompleted
+                    )
+                }
+            }.collect { newCardStates ->
+                _projectCardStates.value = newCardStates
+                Log.d("AppViewModel", "Updated projectCardStates: ${newCardStates.size}")
             }
         }
     }
 
     fun loadProject(projectId: Int) {
-        // Check if data is already cached
-        val cachedState = _projectDetailsCache.value[projectId]
-        if (cachedState != null && !cachedState.isLoading) {
-            // Update the state immediately with cached data
-            _projectDetailState.value = cachedState
+        val cached = _projectDetailsCache.value[projectId]
+        if (cached != null && !cached.isLoading) {
+            _projectDetailState.value = cached
             return
         }
 
-        currentProjectJob?.cancel()
-        currentTaskJob?.cancel()
-
-        // Set loading state
-        val loadingState = ProjectDetailState(isLoading = true)
-        _projectDetailState.value = loadingState
         _projectDetailsCache.value = _projectDetailsCache.value.toMutableMap().apply {
-            put(projectId, loadingState)
+            put(projectId, ProjectDetailState(isLoading = true))
         }
+        _projectDetailState.value = ProjectDetailState(isLoading = true)
 
-        currentProjectJob = viewModelScope.launch {
-            // Fetch project and tasks once
-            val project = repository.getProjectById(projectId).firstOrNull()
-            val tasks = repository.getTasksForProject(projectId).firstOrNull() ?: emptyList()
-            val newState = ProjectDetailState(project = project, tasks = tasks, isLoading = false)
-
-            // Update cache and state
-            _projectDetailsCache.value = _projectDetailsCache.value.toMutableMap().apply {
-                put(projectId, newState)
-            }
-            _projectDetailState.value = newState
-
-            // Continue collecting updates in the background
+        viewModelScope.launch {
             combine(
                 repository.getProjectById(projectId),
                 repository.getTasksForProject(projectId)
-            ) { proj, taskList ->
-                ProjectDetailState(project = proj, tasks = taskList, isLoading = false)
+            ) { project, tasks ->
+                ProjectDetailState(project = project, tasks = tasks, isLoading = false)
             }.collect { state ->
                 _projectDetailsCache.value = _projectDetailsCache.value.toMutableMap().apply {
                     put(projectId, state)
                 }
-                // Only update UI state if this project is still selected
-                if (_projectDetailState.value.project?.id == projectId) {
+                if (_projectDetailState.value.project?.id == projectId || _projectDetailState.value.isLoading) {
                     _projectDetailState.value = state
                 }
             }
@@ -101,19 +136,12 @@ class AppViewModel(
             } else {
                 repository.updateProject(project)
             }
-            // Update cache if the project is modified
-            _projectDetailsCache.value = _projectDetailsCache.value.toMutableMap().apply {
-                get(project.id)?.let { current ->
-                    put(project.id, current.copy(project = project))
-                }
-            }
         }
     }
 
     fun deleteProject(projectId: Int) {
         viewModelScope.launch {
             repository.deleteProject(projectId)
-            // Remove from cache
             _projectDetailsCache.value = _projectDetailsCache.value.toMutableMap().apply {
                 remove(projectId)
             }
@@ -138,20 +166,12 @@ class AppViewModel(
 
     fun toggleTaskCompletion(task: Task) {
         viewModelScope.launch {
-            repository.updateTask(task.copy(isDone = !task.isDone))
-        }
-    }
-
-    fun updateProjectProgress(projectId: Int) {
-        viewModelScope.launch {
-            val completed = repository.countTaskCompleted(projectId)
-            val total = repository.countTaskRemaining(projectId) + completed
-
-            val progress = if (total > 0) {
-                (completed.toFloat() / total.toFloat()) * 100f
-            } else 0f
-
-            _projectProgressMap.value += (projectId to progress)
+            Log.d("AppViewModel", "Toggling task ${task.id}, isDone=${task.isDone}")
+            try {
+                repository.updateTask(task.copy(isDone = !task.isDone))
+            } catch (e: Exception) {
+                Log.e("AppViewModel", "Error toggling task ${task.id}: ${e.message}")
+            }
         }
     }
 }
