@@ -3,12 +3,6 @@ package com.example.projecttracker
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.EaseIn
-import androidx.compose.animation.core.EaseOut
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,6 +21,7 @@ import com.example.projecttracker.ui.navigation.BottomNavigationBar
 import com.example.projecttracker.ui.screens.dashboard.CreateProjectScreen
 import com.example.projecttracker.ui.screens.dashboard.DashboardScreen
 import com.example.projecttracker.ui.screens.dashboard.ProjectDetailScreen
+import com.example.projecttracker.ui.screens.notes.Notes
 import com.example.projecttracker.ui.screens.pomodoro.PomodoroScreen
 import com.example.projecttracker.ui.theme.ProjectTrackerTheme
 import com.example.projecttracker.viewmodel.AppViewModel
@@ -97,7 +92,7 @@ fun MainScreen(viewModel: AppViewModel) {
                     PomodoroScreen()
                 }
                 composable(Screen.Notes.route) {
-                    PlaceholderScreen("Notes Coming Soon")
+                    Notes()
                 }
                 composable(Screen.CreateProject.route) {
                     CreateProjectScreen(navController, viewModel)
